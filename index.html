@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cambio de cheques</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+
+:root{
+  --paper:#EDF0F3; --surface:#FFFFFF; --ink:#16243F; --muted:#5B6780; --line:#D3D9E2;
+  --teal:#2B6A6E; --teal-soft:#DCEBEA; --red:#B3261E; --red-soft:#F6E0DE;
+  --amber:#9A6414; --amber-soft:#F6ECD8; --green:#2E7D4F; --green-soft:#DDEFE3;
+  --guill:rgba(43,106,110,.16);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1622; --surface:#172131; --ink:#E6EBF2; --muted:#9AA6B8; --line:#2A3648;
+    --teal:#6CBDBB; --teal-soft:#1D3538; --red:#F08A80; --red-soft:#3A1F22;
+    --amber:#E3B062; --amber-soft:#3A2E1A; --green:#7CCB99; --green-soft:#1C3326;
+    --guill:rgba(108,189,187,.14);
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px 48px}
+
+/* Header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--line)}
+.bar{max-width:1040px;margin:0 auto;padding:12px 16px 0;display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 20px}
+.brand{font-stretch:78%;font-weight:800;font-size:22px;letter-spacing:-.01em;padding-bottom:10px}
+.brand small{font-stretch:100%;font-weight:500;font-size:13px;color:var(--muted);margin-left:8px}
+nav{display:flex;gap:4px;margin-left:auto;overflow-x:auto}
+nav button{border:0;background:none;padding:10px 12px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--teal)}
+nav .count{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:10px;background:var(--amber-soft);color:var(--amber);font-size:12px}
+
+section[hidden]{display:none}
+h2{font-stretch:80%;font-weight:750;font-size:26px;margin:24px 0 4px}
+.sub{color:var(--muted);margin:0 0 18px}
+
+/* Form */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:720px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){.g2,.g3,.g4{grid-template-columns:1fr}}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:500}
+input,select{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:9px 10px;font-size:15px;min-width:0}
+input:focus,select:focus{border-color:var(--teal)}
+.params{display:grid;grid-template-columns:1.4fr repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media (max-width:720px){.params{grid-template-columns:repeat(2,1fr)}.params .cli{grid-column:1/-1}}
+
+.chq{border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:12px;background:var(--surface)}
+.chq-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:700}
+.chq-head span{font-weight:500;color:var(--muted);font-size:13px}
+.link{border:0;background:none;color:var(--red);cursor:pointer;font-size:13px;padding:4px}
+
+.photos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.shot{position:relative;aspect-ratio:2.3/1;border:1.5px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;color:var(--muted);font-size:13px;cursor:pointer;overflow:hidden;background:var(--paper)}
+.shot:hover{border-color:var(--teal);color:var(--teal)}
+.shot strong{color:var(--ink);font-weight:650}
+.shot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.shot .kb{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:2px 6px;border-radius:4px}
+.shot input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn.wa{background:#1F8F55;border-color:#1F8F55;color:#fff}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+
+/* The cheque strip — the one memorable element */
+.strip{margin-top:20px;display:grid;grid-template-columns:200px 1fr;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+.talon{padding:16px;border-right:2px dashed var(--line);font-size:13px;color:var(--muted);display:grid;gap:6px;align-content:start}
+.talon b{color:var(--ink);font-weight:650;float:right}
+.body{position:relative;padding:18px 22px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40'%3E%3Cpath d='M0 20 Q15 0 30 20 T60 20 T90 20 T120 20' fill='none' stroke='%232B6A6E' stroke-opacity='.18' stroke-width='1'/%3E%3Cpath d='M0 28 Q15 8 30 28 T60 28 T90 28 T120 28' fill='none' stroke='%232B6A6E' stroke-opacity='.12' stroke-width='1'/%3E%3Cpath d='M0 12 Q15 32 30 12 T60 12 T90 12 T120 12' fill='none' stroke='%232B6A6E' stroke-opacity='.12' stroke-width='1'/%3E%3C/svg%3E")}
+.body .lbl{font-size:13px;color:var(--muted)}
+.neto{font-stretch:75%;font-weight:800;font-size:clamp(34px,7vw,56px);line-height:1;letter-spacing:-.02em;margin:4px 0 10px}
+.rows{display:grid;grid-template-columns:repeat(4,auto);gap:4px 22px;justify-content:start;font-size:13px;color:var(--muted)}
+.rows div b{display:block;color:var(--ink);font-size:15px;font-weight:600}
+.rows .neg b{color:var(--red)}
+@media (max-width:640px){.strip{grid-template-columns:1fr}.talon{border-right:0;border-bottom:2px dashed var(--line);grid-template-columns:1fr 1fr}.rows{grid-template-columns:repeat(2,auto)}}
+
+/* Cartera */
+.alert{display:flex;gap:10px;align-items:center;background:var(--amber-soft);color:var(--amber);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-weight:600}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.filters input{flex:1 1 220px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.list{display:grid;gap:8px}
+.item{display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;text-align:left;width:100%}
+.item:hover{border-color:var(--teal)}
+.item img{width:96px;height:42px;object-fit:cover;border-radius:4px;background:var(--paper)}
+.item .t{font-weight:650}
+.item .m{font-size:13px;color:var(--muted)}
+.item .r{text-align:right}
+.item .amt{font-weight:750;font-size:17px}
+@media (max-width:520px){.item{grid-template-columns:72px 1fr}.item img{width:72px;height:32px}.item .r{grid-column:1/-1;text-align:left;display:flex;justify-content:space-between;align-items:center}}
+.pill{display:inline-block;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:650;margin-top:4px}
+.s-cartera{background:var(--teal-soft);color:var(--teal)}
+.s-depositado{background:var(--amber-soft);color:var(--amber)}
+.s-acreditado{background:var(--green-soft);color:var(--green)}
+.s-rechazado{background:var(--red-soft);color:var(--red)}
+.s-negociado{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
+.due-soon{color:var(--amber);font-weight:600}
+.due-late{color:var(--red);font-weight:600}
+.empty{padding:28px;text-align:center;color:var(--muted);border:1.5px dashed var(--line);border-radius:10px}
+
+/* Resumen */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.stat span{font-size:13px;color:var(--muted)}
+.stat b{display:block;font-stretch:80%;font-size:26px;font-weight:750;margin-top:2px}
+.tbl-wrap{overflow-x:auto;margin-top:16px}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}
+th{font-size:13px;color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right}
+
+/* Dialog */
+dialog{border:0;border-radius:12px;padding:0;max-width:680px;width:calc(100% - 24px);background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(10,16,28,.55)}
+.dlg{padding:18px}
+.dlg h3{margin:0 0 2px;font-stretch:80%;font-size:22px}
+.dlg .photos{grid-template-columns:1fr 1fr}
+.dlg .shot{cursor:zoom-in;border-style:solid}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+@media (max-width:520px){.kv{grid-template-columns:1fr 1fr}}
+.kv div{font-size:13px;color:var(--muted)}
+.kv b{display:block;color:var(--ink);font-size:15px;font-weight:600}
+.states{display:flex;flex-wrap:wrap;gap:6px}
+.lightbox{max-width:min(1000px,96vw);background:#000}
+.lightbox img{display:block;width:100%;height:auto}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.on{opacity:1}
+.mutrow{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.calcbox{display:flex;flex-direction:column;justify-content:flex-end;font-size:13px;color:var(--muted)}
+.calcbox b{font-size:16px;color:var(--ink);font-weight:650;padding:9px 0}
+.calcbox b.pos{color:var(--green)}
+.mutline{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 22px;align-items:baseline;font-size:13px;color:var(--muted)}
+.mutline .mg{font-stretch:80%;font-weight:800;font-size:24px;color:var(--green)}
+.tbl-wrap h3{font-stretch:80%;font-size:20px;margin:24px 0 8px}
+td input{width:100%;padding:6px 8px}
+.lim{margin-top:14px;padding:12px 14px;border-radius:8px;background:var(--paper);font-size:13px;color:var(--muted)}
+.lim.over{background:var(--red-soft);color:var(--red)}
+.limtop{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;margin-bottom:8px}
+.limtop b{color:var(--ink)}
+.lim.over .limtop b{color:var(--red)}
+.meter{display:flex;height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin:6px 0}
+.meter i{display:block;height:100%;background:var(--teal)}
+.meter i.nw{background:repeating-linear-gradient(45deg,var(--amber) 0 5px,transparent 5px 9px);background-color:var(--amber-soft)}
+.meter.over i{background:var(--red)}
+.meter.over i.nw{background:repeating-linear-gradient(45deg,var(--red) 0 5px,transparent 5px 9px);background-color:var(--red-soft)}
+.cli-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.cli-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;align-items:baseline}
+.cli-head .t{font-weight:700;font-size:17px}
+.cli-nums{display:flex;flex-wrap:wrap;gap:4px 20px;font-size:13px;color:var(--muted)}
+.cli-nums b{color:var(--ink)}
+.gar{display:grid;grid-template-columns:1fr auto auto auto;gap:4px 16px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.gar:first-of-type{margin-top:10px}
+.gar .d{font-weight:600}
+.gar .m2{font-size:12px;color:var(--muted);display:block;font-weight:400}
+@media (max-width:560px){.gar{grid-template-columns:1fr auto}}
+.note{font-size:13px;color:var(--muted);margin-top:28px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- extra: login, usuarios, estados de carga ---- */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.gate[hidden],#loadMsg[hidden]{display:none}
+.gate .panel{width:100%;max-width:380px}
+.gate h1{font-stretch:78%;font-weight:800;font-size:28px;margin:0 0 4px}
+.gate form{display:grid;gap:12px;margin-top:16px}
+.gate .msg{font-size:13px;margin-top:10px;color:var(--muted)}
+.gate .msg.err{color:var(--red)}
+.who{font-size:13px;color:var(--muted);padding-bottom:12px;display:flex;gap:10px;align-items:center}
+.who button{border:0;background:none;color:var(--red);cursor:pointer;font-size:13px;text-decoration:underline;padding:0}
+.loading{padding:30px;text-align:center;color:var(--muted)}
+.btn[disabled]{opacity:.6;cursor:wait}
+.hist{margin-top:14px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.hist div{padding:2px 0}
+.ro .edit-only{display:none!important}
+.shot.upl{border-style:dashed;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="gate" id="gLogin" hidden>
+  <div class="panel">
+    <h1>Cambio de cheques</h1>
+    <div style="color:var(--muted)">Ingresá con tu usuario</div>
+    <form id="fLogin">
+      <label>Mail<input id="lMail" type="email" autocomplete="username" required></label>
+      <label>Contraseña<input id="lPass" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary" id="lBtn">Entrar</button>
+    </form>
+    <div class="msg" id="lMsg"></div>
+    <div class="msg"><button class="link" id="lReg" style="padding:0;color:var(--teal)">¿No tenés usuario? Pedir acceso</button></div>
+  </div>
+</div>
+
+<!-- SIN ACCESO -->
+<div class="gate" id="gNoAccess" hidden>
+  <div class="panel">
+    <h1>Sin acceso todavía</h1>
+    <p style="color:var(--muted)">Tu usuario <b id="naMail"></b> existe pero no tiene permisos. Pedile al administrador que te habilite desde la pestaña Usuarios.</p>
+    <div class="actions"><button class="btn" id="naRetry">Ya me habilitaron</button><button class="btn" id="naOut">Salir</button></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" hidden>
+<header>
+  <div class="bar">
+    <div class="brand">Cambio de cheques</div>
+    <nav role="tablist" id="nav">
+      <button role="tab" data-tab="nueva" class="edit-only">Nueva operación</button>
+      <button role="tab" data-tab="cartera">Cartera <span class="count" id="dueCount"></span></button>
+      <button role="tab" data-tab="clientes">Clientes y garantías</button>
+      <button role="tab" data-tab="resumen">Resumen</button>
+      <button role="tab" data-tab="usuarios" id="tabUsers" hidden>Usuarios</button>
+    </nav>
+  </div>
+  <div class="bar" style="padding-top:0"><div class="who"><span id="whoTxt"></span><button id="logout">Salir</button></div></div>
+</header>
+
+<main class="wrap">
+  <div id="loadMsg" class="loading">Cargando datos…</div>
+
+  <!-- NUEVA OPERACIÓN -->
+  <section id="nueva" hidden>
+    <h2>Nueva operación</h2>
+    <p class="sub">Cargá los cheques y la cotización se calcula sola.</p>
+    <div class="panel">
+      <div class="params">
+        <label class="cli">Cliente<select id="pCliente"></select></label>
+        <label>Tasa mensual %<input id="pTasa" type="number" step="0.1" value="6"></label>
+        <label>Comisión %<input id="pCom" type="number" step="0.1" value="1"></label>
+        <label>Imp. cheque %<input id="pImp" type="number" step="0.1" value="1.2"></label>
+        <label>Días clearing<input id="pClear" type="number" step="1" value="2"></label>
+      </div>
+      <label style="max-width:220px">Gastos fijos $<input id="pGastos" type="number" step="100" value="2000"></label>
+      <div id="limBox"></div>
+    </div>
+    <div id="chqList"></div>
+    <div class="actions"><button class="btn" id="addChq">Agregar cheque</button></div>
+    <div class="strip" aria-live="polite">
+      <div class="talon">
+        <div>Cheques <b id="tCant">0</b></div>
+        <div>Días prom. <b id="tDias">0</b></div>
+        <div>Tasa <b id="tTasa">0%</b></div>
+        <div>TEA aprox. <b id="tTea">0%</b></div>
+        <div>Tu margen <b id="tMarg" style="color:var(--green)">$ 0</b></div>
+      </div>
+      <div class="body">
+        <div class="lbl">Neto a entregar</div>
+        <div class="neto" id="tNeto">$ 0</div>
+        <div class="rows">
+          <div>Valor nominal<b id="tBruto">$ 0</b></div>
+          <div class="neg">Descuento<b id="tDesc">$ 0</b></div>
+          <div class="neg">Comisión + imp.<b id="tCom">$ 0</b></div>
+          <div class="neg">Gastos<b id="tGas">$ 0</b></div>
+        </div>
+        <div class="mutline" id="tMut"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn wa" id="sendWa">Enviar cotización por WhatsApp</button>
+      <button class="btn primary" id="saveOp">Guardar operación</button>
+    </div>
+  </section>
+
+  <!-- CARTERA -->
+  <section id="cartera" hidden>
+    <h2>Cartera</h2>
+    <p class="sub">Tocá un cheque para ver las fotos y cambiarle el estado.</p>
+    <div id="dueAlert"></div>
+    <div class="filters"><input id="q" type="search" placeholder="Buscar por librador, CUIT, banco o número"></div>
+    <div class="filters" id="estFilters"></div>
+    <div class="list" id="list"></div>
+    <p class="note">Se muestran los cheques activos y los de los últimos 6 meses.</p>
+  </section>
+
+  <!-- CLIENTES -->
+  <section id="clientes" hidden>
+    <h2>Clientes y garantías</h2>
+    <p class="sub">Cada cliente opera hasta el límite de lo que dejó en garantía. El uso cuenta los cheques que todavía te pueden volver.</p>
+    <div class="panel edit-only" style="margin-bottom:14px">
+      <div class="grid g3">
+        <label>Nombre del cliente<input id="ncNom" placeholder="Ej: Transporte Oeste"></label>
+        <label>WhatsApp<input id="ncTel" inputmode="tel" placeholder="549353..."></label>
+        <label>&nbsp;<button class="btn primary" id="ncAdd">Agregar cliente</button></label>
+      </div>
+    </div>
+    <div class="list" id="cliList"></div>
+  </section>
+
+  <!-- RESUMEN -->
+  <section id="resumen" hidden>
+    <h2>Resumen</h2>
+    <p class="sub">Estado de la cartera al día de hoy.</p>
+    <div class="stats" id="stats"></div>
+    <div class="tbl-wrap"><table id="tblVenc"></table></div>
+    <div class="tbl-wrap"><h3>Mutuales</h3><table id="tblMut"></table></div>
+    <div class="actions edit-only"><button class="btn" id="addMut">Agregar mutual</button></div>
+  </section>
+
+  <!-- USUARIOS -->
+  <section id="usuarios" hidden>
+    <h2>Usuarios</h2>
+    <p class="sub">Admin: todo. Operador: carga y edita. Lectura: solo mira. Sin acceso: no ve nada.</p>
+    <div class="tbl-wrap"><table id="tblUsers"></table></div>
+    <p class="note">Para sumar a alguien: que entre a esta página y toque "Pedir acceso", o crealo en Supabase → Authentication → Add user. Después le asignás el rol acá.</p>
+  </section>
+</main>
+</div>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<dialog id="lb" class="lightbox"><img id="lbImg" alt="Foto ampliada"></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= Configuración ================= */
+const SUPABASE_URL = 'https://vwanxtytzuaushzkpebv.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_0v3-_6sguuyturm-1R6ygA_NvVn7wST';
+const BUCKET = 'cheques';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ================= Utilidades ================= */
+const $ = s => document.querySelector(s);
+const N = x => Number(x)||0;
+const rd = n => Math.round(n*100)/100;
+const fmt = n => '$ ' + Math.round(N(n)).toLocaleString('es-AR');
+const pad = n => String(n).padStart(2,'0');
+const isoD = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const hoy = new Date(); hoy.setHours(0,0,0,0);
+const addDays = n => { const d=new Date(hoy); d.setDate(d.getDate()+n); return isoD(d); };
+const diasA = f => f ? Math.round((new Date(f+'T00:00') - hoy)/86400000) : 0;
+const fechaAR = f => f ? String(f).slice(0,10).split('-').reverse().join('/') : '—';
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16);}));
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast = (m,ms=2400) => { const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),ms); };
+const errMsg = e => { const m = e?.message||String(e); if(/row-level security|permission/i.test(m)) return 'No tenés permiso para hacer esto'; if(/Failed to fetch|NetworkError/i.test(m)) return 'Sin conexión. Probá de nuevo'; return m; };
+
+const BANCOS = ['Banco de Córdoba','Banco Nación','Galicia','Santander','Macro','BBVA','Credicoop','ICBC','Supervielle','Patagonia','Otro'];
+const ESTADOS = {cartera:'En cartera',depositado:'Depositado',acreditado:'Acreditado',rechazado:'Rechazado',negociado:'Descargado'};
+const MOTIVOS = ['Sin fondos','Defectos formales','Firma no coincide','Orden de no pagar','Cuenta cerrada'];
+
+/* ================= Estado ================= */
+let me=null, rol=null, canEdit=false, isAdmin=false;
+let clientes=[], garantias=[], mutuales=[], cheques=[];
+const urlCache = {};
+
+const cliById = id => clientes.find(c=>c.id===id);
+const mutName = id => mutuales.find(m=>m.id===id)?.nombre || '';
+const vivo = c => ['cartera','depositado','rechazado'].includes(c.estado) || (c.estado==='negociado' && diasA(c.fecha_pago)+2 >= 0);
+const garDe = cid => garantias.filter(g=>g.cliente_id===cid);
+const limiteCli = cid => garDe(cid).reduce((s,g)=>s+N(g.limite),0);
+const usoCli = cid => cheques.filter(c=>c.cliente_id===cid && vivo(c)).reduce((s,c)=>s+N(c.monto),0);
+const margenOf = c => N(c.descuento)+N(c.comision)-N(c.costo_mutual);
+function meter(uso, nuevo, lim){
+  const tot = Math.max(lim, uso+nuevo, 1), over = uso+nuevo > lim;
+  return `<div class="meter ${over?'over':''}"><i style="width:${uso/tot*100}%"></i>${nuevo?`<i class="nw" style="width:${nuevo/tot*100}%"></i>`:''}</div>`;
+}
+
+/* ================= Login ================= */
+function show(id){ ['gLogin','gNoAccess','app'].forEach(x=>$('#'+x).hidden = x!==id); }
+
+$('#fLogin').addEventListener('submit', async e=>{
+  e.preventDefault();
+  $('#lBtn').disabled=true; $('#lMsg').className='msg'; $('#lMsg').textContent='Entrando…';
+  const {data, error} = await sb.auth.signInWithPassword({email:$('#lMail').value.trim(), password:$('#lPass').value});
+  $('#lBtn').disabled=false;
+  if(error){ $('#lMsg').className='msg err'; $('#lMsg').textContent = /invalid/i.test(error.message) ? 'Mail o contraseña incorrectos' : errMsg(error); return; }
+  $('#lMsg').textContent=''; afterLogin(data.user);
+});
+$('#lReg').addEventListener('click', async ()=>{
+  const email=$('#lMail').value.trim(), password=$('#lPass').value;
+  if(!email || password.length<6){ $('#lMsg').className='msg err'; $('#lMsg').textContent='Completá mail y una contraseña de 6 caracteres o más, y tocá de nuevo'; return; }
+  const {data, error} = await sb.auth.signUp({email, password, options:{data:{nombre:email}}});
+  if(error){ $('#lMsg').className='msg err'; $('#lMsg').textContent = /not allowed|disabled/i.test(error.message) ? 'El registro está desactivado. Pedile al administrador que te cree el usuario.' : errMsg(error); return; }
+  $('#lMsg').className='msg'; $('#lMsg').textContent = data.session ? 'Usuario creado. Ahora pedile al administrador que te habilite.' : 'Te mandamos un mail para confirmar. Después pedile al administrador que te habilite.';
+  if(data.session) afterLogin(data.user);
+});
+async function logout(){ await sb.auth.signOut(); location.reload(); }
+$('#logout').onclick = logout; $('#naOut').onclick = logout;
+$('#naRetry').onclick = ()=>afterLogin(me);
+
+async function afterLogin(user){
+  me = user;
+  const {data, error} = await sb.from('perfiles').select('rol,nombre').eq('id', user.id).maybeSingle();
+  if(error){ toast(errMsg(error)); }
+  rol = data?.rol || null;
+  if(!rol){ $('#naMail').textContent = user.email; return show('gNoAccess'); }
+  canEdit = rol==='admin' || rol==='operador'; isAdmin = rol==='admin';
+  document.body.classList.toggle('ro', !canEdit);
+  $('#tabUsers').hidden = !isAdmin;
+  $('#whoTxt').textContent = `${user.email} · ${rol}`;
+  show('app');
+  await loadAll();
+  goTab(canEdit ? 'nueva' : 'cartera');
+}
+
+/* ================= Carga de datos ================= */
+async function loadAll(){
+  $('#loadMsg').hidden = false;
+  const desde = addDays(-180);
+  const res = await Promise.all([
+    sb.from('clientes').select('*').eq('activo',true).order('nombre'),
+    sb.from('garantias').select('*').eq('estado','vigente').order('created_at'),
+    sb.from('mutuales').select('*').order('nombre'),
+    sb.from('cheques').select('*').or(`estado.in.(cartera,depositado,rechazado),fecha_pago.gte.${desde}`).order('fecha_pago').limit(5000)
+  ]);
+  const bad = res.find(r=>r.error);
+  $('#loadMsg').hidden = true;
+  if(bad){ toast('Error cargando datos: '+errMsg(bad.error), 5000); return; }
+  [clientes, garantias, mutuales, cheques] = res.map(r=>r.data||[]);
+  fillClientes(); updateDue();
+}
+
+/* Fotos: links firmados temporales (bucket privado) */
+async function signUrls(paths){
+  const need = [...new Set(paths.filter(p=>p && !(urlCache[p] && urlCache[p].exp > Date.now())))];
+  if(need.length){
+    const {data, error} = await sb.storage.from(BUCKET).createSignedUrls(need, 3600);
+    if(!error) data.forEach(d=>{ if(d.signedUrl) urlCache[d.path] = {url:d.signedUrl, exp:Date.now()+3500*1000}; });
+  }
+}
+const urlOf = p => urlCache[p]?.url || '';
+async function upload(path, blob){
+  const {error} = await sb.storage.from(BUCKET).upload(path, blob, {contentType:'image/jpeg', upsert:true});
+  if(error) throw error;
+}
+function compress(file, max=1400, q=0.72){
+  return new Promise((res,rej)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const s = Math.min(1, max/Math.max(img.width,img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width*s); c.height = Math.round(img.height*s);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(img.src);
+      c.toBlob(b=> b ? res({blob:b, url:URL.createObjectURL(b), kb:Math.round(b.size/1024)}) : rej(new Error('No se pudo procesar la foto')), 'image/jpeg', q);
+    };
+    img.onerror = ()=>rej(new Error('No se pudo leer la foto'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+/* ================= Navegación ================= */
+function goTab(t){
+  document.querySelectorAll('#nav button').forEach(x=>x.setAttribute('aria-selected', x.dataset.tab===t));
+  document.querySelectorAll('main section').forEach(s=>s.hidden = s.id!==t);
+  if(t==='nueva') calc();
+  if(t==='cartera') renderCartera();
+  if(t==='clientes') renderClientes();
+  if(t==='resumen') renderResumen();
+  if(t==='usuarios') renderUsers();
+  window.scrollTo(0,0);
+}
+$('#nav').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) goTab(b.dataset.tab); });
+const curTab = () => document.querySelector('#nav [aria-selected="true"]')?.dataset.tab;
+
+/* ================= Nueva operación ================= */
+let draft = [], last = null, saving = false;
+const newDraft = () => ({key:newId(), banco:BANCOS[0], numero:'', librador:'', cuit_librador:'', tipo:'Físico', fecha_pago:addDays(30), monto:'', fotoFrente:null, fotoDorso:null, mutual_id:'', tasa_mutual:''});
+
+function fillClientes(){
+  const sel = $('#pCliente').value;
+  $('#pCliente').innerHTML = clientes.length
+    ? clientes.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.nombre)}</option>`).join('')
+    : `<option value="">Primero cargá un cliente</option>`;
+}
+function chqRow(ch, i){
+  return `<div class="chq" data-k="${ch.key}">
+    <div class="chq-head">Cheque ${i+1} <span id="lin-${ch.key}"></span>
+      ${draft.length>1?`<button class="link" data-del="${ch.key}">Quitar</button>`:''}</div>
+    <div class="grid g4">
+      <label>Monto $<input data-f="monto" type="number" inputmode="decimal" value="${ch.monto}" placeholder="0"></label>
+      <label>Fecha de pago<input data-f="fecha_pago" type="date" value="${ch.fecha_pago}"></label>
+      <label>Banco<select data-f="banco">${BANCOS.map(b=>`<option ${b===ch.banco?'selected':''}>${b}</option>`).join('')}</select></label>
+      <label>N° de cheque<input data-f="numero" inputmode="numeric" value="${esc(ch.numero)}"></label>
+      <label>Librador<input data-f="librador" value="${esc(ch.librador)}"></label>
+      <label>CUIT librador<input data-f="cuit_librador" inputmode="numeric" value="${esc(ch.cuit_librador)}" placeholder="30-12345678-9"></label>
+      <label>Tipo<select data-f="tipo"><option ${ch.tipo==='Físico'?'selected':''}>Físico</option><option ${ch.tipo==='eCheq'?'selected':''}>eCheq</option></select></label>
+      <label>&nbsp;<a class="btn" style="text-align:center;text-decoration:none" href="https://www.bcra.gob.ar/BCRAyVos/Situacion_Crediticia.asp" target="_blank" rel="noopener">Consultar CUIT en BCRA</a></label>
+    </div>
+    <div class="grid g4 mutrow">
+      <label>Descargar en<select data-f="mutual_id"><option value="">No, lo guardo</option>${mutuales.filter(m=>m.activa).map(m=>`<option value="${m.id}" ${m.id===ch.mutual_id?'selected':''}>${esc(m.nombre)} (${N(m.tasa_mensual)}%)</option>`).join('')}</select></label>
+      <label>Tasa mutual % mensual<input data-f="tasa_mutual" type="number" step="0.1" value="${ch.tasa_mutual}" ${ch.mutual_id?'':'disabled'} placeholder="—"></label>
+      <div class="calcbox">Te paga la mutual<b id="rec-${ch.key}">—</b></div>
+      <div class="calcbox">Tu margen<b class="pos" id="mar-${ch.key}">—</b></div>
+    </div>
+    <div class="photos">${shot(ch,'Frente')}${shot(ch,'Dorso')}</div>
+  </div>`;
+}
+function shot(ch, lado){
+  const f = ch['foto'+lado];
+  return `<label class="shot" data-shot="${lado}">
+    ${f?`<img src="${f.url}" alt="${lado} del cheque"><span class="kb">${f.kb} KB · cambiar</span>`:`<strong>Foto ${lado.toLowerCase()}</strong>Sacar foto o elegir archivo`}
+    <input type="file" accept="image/*" capture="environment">
+  </label>`;
+}
+function renderDraft(){ $('#chqList').innerHTML = draft.map(chqRow).join(''); calc(); }
+
+$('#chqList').addEventListener('input', e=>{
+  const f = e.target.dataset.f; if(!f) return;
+  const box = e.target.closest('.chq'), ch = draft.find(x=>x.key===box.dataset.k);
+  ch[f] = e.target.value;
+  if(f==='mutual_id'){
+    const m = mutuales.find(x=>x.id===ch.mutual_id), inp = box.querySelector('[data-f="tasa_mutual"]');
+    ch.tasa_mutual = m ? N(m.tasa_mensual) : ''; inp.value = ch.tasa_mutual; inp.disabled = !m;
+  }
+  calc();
+});
+$('#chqList').addEventListener('click', e=>{ const k=e.target.dataset.del; if(k){ draft=draft.filter(x=>x.key!==k); renderDraft(); } });
+$('#chqList').addEventListener('change', async e=>{
+  if(e.target.type!=='file' || !e.target.files[0]) return;
+  const box = e.target.closest('.shot'), lado = box.dataset.shot;
+  const ch = draft.find(x=>x.key===e.target.closest('.chq').dataset.k);
+  box.innerHTML = '<strong>Procesando…</strong>';
+  try{ ch['foto'+lado] = await compress(e.target.files[0]); }catch(err){ toast(err.message); }
+  box.outerHTML = shot(ch, lado);
+});
+
+function params(){ return {tasa:N($('#pTasa').value), com:N($('#pCom').value), imp:N($('#pImp').value), clear:N($('#pClear').value), gastos:N($('#pGastos').value)}; }
+function calcOne(ch, p){
+  const m = N(ch.monto), dias = Math.max(0, diasA(ch.fecha_pago)) + p.clear;
+  const desc = m*p.tasa/100*dias/30, com = m*p.com/100, imp = m*p.imp/100;
+  const tm = ch.mutual_id ? N(ch.tasa_mutual) : 0, costoM = m*tm/100*dias/30;
+  return {m, dias, desc, com, imp, neto:m-desc-com-imp, costoM, recibeM:m-costoM-imp, margen:desc+com-costoM};
+}
+function calc(){
+  const p = params();
+  let bruto=0, desc=0, com=0, diasPond=0, cant=0, costoM=0, recibeM=0, nMut=0, margen=0;
+  draft.forEach(ch=>{
+    const r = calcOne(ch,p);
+    const el = document.getElementById('lin-'+ch.key); if(el) el.textContent = r.m ? `${r.dias} días · neto ${fmt(r.neto)}` : '';
+    const rec = document.getElementById('rec-'+ch.key), mar = document.getElementById('mar-'+ch.key);
+    if(rec){ rec.textContent = r.m && ch.mutual_id ? fmt(r.recibeM) : '—'; mar.textContent = r.m ? fmt(r.margen) : '—'; }
+    if(r.m){ bruto+=r.m; desc+=r.desc; com+=r.com+r.imp; diasPond+=r.dias*r.m; cant++; margen+=r.margen;
+      if(ch.mutual_id){ costoM+=r.costoM; recibeM+=r.recibeM; nMut++; } }
+  });
+  const gastos = cant ? p.gastos : 0, neto = bruto-desc-com-gastos, dProm = bruto ? diasPond/bruto : 0;
+  $('#tCant').textContent = cant; $('#tDias').textContent = Math.round(dProm);
+  $('#tTasa').textContent = p.tasa.toLocaleString('es-AR')+'% mensual';
+  $('#tTea').textContent = Math.round((Math.pow(1+p.tasa/100,12)-1)*100)+'%';
+  $('#tBruto').textContent = fmt(bruto); $('#tDesc').textContent = '− '+fmt(desc);
+  $('#tCom').textContent = '− '+fmt(com); $('#tGas').textContent = '− '+fmt(gastos);
+  $('#tNeto').textContent = fmt(Math.max(0,neto));
+  const cid = $('#pCliente').value, lim = limiteCli(cid), uso = usoCli(cid), disp = lim-uso, over = bruto > disp;
+  $('#limBox').innerHTML = !cid ? '' : `<div class="lim ${over?'over':''}">
+    <div class="limtop"><span>Límite por garantía <b>${fmt(lim)}</b></span><span>En uso <b>${fmt(uso)}</b></span><span>Disponible <b>${fmt(disp)}</b></span></div>
+    ${meter(uso, bruto, lim)}
+    ${lim ? (over ? `Esta operación (${fmt(bruto)}) supera el disponible por ${fmt(bruto-disp)}.` : `Esta operación usa ${fmt(bruto)}. Después le quedan ${fmt(disp-bruto)}.`) : 'Este cliente no tiene garantía cargada.'}
+  </div>`;
+  const mg = margen + gastos;
+  $('#tMarg').textContent = fmt(mg);
+  $('#tMut').innerHTML = nMut
+    ? `<span>Descargás ${nMut} de ${cant} en mutual</span><span>Costo mutual −${fmt(costoM)}</span><span>Te pagan ${fmt(recibeM)}</span><span style="margin-left:auto">Tu margen <span class="mg">${fmt(mg)}</span></span>`
+    : (cant ? `<span>Sin descarga: cobrás el cheque a su vencimiento</span><span style="margin-left:auto">Tu margen <span class="mg">${fmt(mg)}</span></span>` : '');
+  last = {bruto, desc, com, gastos, neto, cant, p, over, exceso:bruto-disp};
+}
+['#pTasa','#pCom','#pImp','#pClear','#pGastos','#pCliente'].forEach(s=>$(s).addEventListener('input',calc));
+$('#addChq').addEventListener('click',()=>{ draft.push(newDraft()); renderDraft(); });
+
+$('#sendWa').addEventListener('click',()=>{
+  if(!last || !last.cant) return toast('Cargá al menos un cheque con monto');
+  const cli = cliById($('#pCliente').value); if(!cli) return toast('Elegí un cliente');
+  const lines = draft.filter(c=>N(c.monto)).map((c,i)=>{ const r=calcOne(c,last.p); return `${i+1}) ${c.banco} · ${fmt(r.m)} · vence ${fechaAR(c.fecha_pago)} → ${fmt(r.neto)}`; });
+  const txt = `Hola ${cli.nombre}, te paso la cotización:\n\n${lines.join('\n')}\n\nValor nominal: ${fmt(last.bruto)}\nDescuento (${last.p.tasa}% mensual): −${fmt(last.desc)}\nComisión e impuestos: −${fmt(last.com)}\nGastos: −${fmt(last.gastos)}\n\n*Neto a recibir: ${fmt(last.neto)}*\n\nCotización válida por hoy.`;
+  window.open('https://wa.me/'+(cli.telefono||'')+'?text='+encodeURIComponent(txt), '_blank');
+});
+
+$('#saveOp').addEventListener('click', async ()=>{
+  if(saving) return;
+  const p = params(), cid = $('#pCliente').value;
+  if(!cid) return toast('Elegí un cliente (o cargalo en Clientes y garantías)');
+  const ok = draft.filter(c=>N(c.monto));
+  if(!ok.length) return toast('Cargá al menos un cheque con monto');
+  if(ok.some(c=>!c.fecha_pago)) return toast('Falta la fecha de pago en algún cheque');
+  calc();
+  if(last.over && !confirm(`Supera el límite de garantía por ${fmt(last.exceso)}. ¿Autorizás la operación igual?`)) return;
+  if(ok.some(c=>!c.fotoFrente) && !confirm('Hay cheques sin foto del frente. ¿Guardar igual?')) return;
+  saving = true; const btn=$('#saveOp'); btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    const opId = newId(), rows = [];
+    for(const c of ok){
+      const id = newId(), r = calcOne(c,p);
+      let ff=null, fd=null;
+      if(c.fotoFrente){ ff=`cheques/${opId}/${id}_frente.jpg`; btn.textContent='Subiendo fotos…'; await upload(ff, c.fotoFrente.blob); }
+      if(c.fotoDorso){ fd=`cheques/${opId}/${id}_dorso.jpg`; await upload(fd, c.fotoDorso.blob); }
+      rows.push({id, operacion_id:opId, cliente_id:cid, banco:c.banco, numero:c.numero||null, librador:c.librador||null,
+        cuit_librador:c.cuit_librador||null, tipo:c.tipo, modalidad:diasA(c.fecha_pago)>0?'Diferido':'Común',
+        fecha_pago:c.fecha_pago, monto:rd(r.m), tasa_mensual:p.tasa, descuento:rd(r.desc), comision:rd(r.com), impuesto:rd(r.imp), neto:rd(r.neto),
+        estado:c.mutual_id?'negociado':'cartera', mutual_id:c.mutual_id||null, tasa_mutual:c.mutual_id?N(c.tasa_mutual):null,
+        costo_mutual:rd(r.costoM), descargado_at:c.mutual_id?new Date().toISOString():null, foto_frente:ff, foto_dorso:fd});
+    }
+    btn.textContent='Guardando…';
+    const e1 = (await sb.from('operaciones').insert({id:opId, cliente_id:cid, tasa_mensual:p.tasa, comision_pct:p.com, impuesto_pct:p.imp,
+      dias_clearing:p.clear, gastos_fijos:p.gastos, bruto:rd(last.bruto), neto_total:rd(last.neto), excedio_limite:!!last.over})).error;
+    if(e1) throw e1;
+    const e2 = (await sb.from('cheques').insert(rows)).error;
+    if(e2) throw e2;
+    toast(`Operación guardada: ${ok.length} cheque${ok.length>1?'s':''}`);
+    draft = [newDraft()]; await loadAll(); renderDraft();
+  }catch(err){ toast('No se guardó: '+errMsg(err), 5000); }
+  finally{ saving=false; btn.disabled=false; btn.textContent='Guardar operación'; }
+});
+
+/* ================= Cartera ================= */
+let filtro = 'activos';
+function renderFilters(){
+  const opts = [['activos','Activos'],['todos','Todos'],...Object.entries(ESTADOS)];
+  $('#estFilters').innerHTML = opts.map(([k,v])=>{
+    const n = k==='todos'?cheques.length : k==='activos'?cheques.filter(c=>['cartera','depositado'].includes(c.estado)).length : cheques.filter(c=>c.estado===k).length;
+    return `<button class="chip" data-f="${k}" aria-pressed="${filtro===k}">${v} (${n})</button>`;
+  }).join('');
+}
+$('#estFilters').addEventListener('click',e=>{ const f=e.target.dataset.f; if(f){filtro=f; renderCartera();} });
+$('#q').addEventListener('input', renderCartera);
+function vencTxt(c){
+  const d = diasA(c.fecha_pago);
+  if(!['cartera','depositado'].includes(c.estado)) return `Pago ${fechaAR(c.fecha_pago)}`;
+  if(d<0) return `<span class="due-late">Venció hace ${-d} día${d===-1?'':'s'}</span>`;
+  if(d===0) return `<span class="due-late">Vence hoy</span>`;
+  if(d<=7) return `<span class="due-soon">Vence en ${d} día${d===1?'':'s'}</span>`;
+  return `Vence ${fechaAR(c.fecha_pago)} (${d} días)`;
+}
+async function renderCartera(){
+  renderFilters();
+  const q = $('#q').value.toLowerCase().trim();
+  let l = cheques.filter(c=> filtro==='todos' ? true : filtro==='activos' ? ['cartera','depositado'].includes(c.estado) : c.estado===filtro);
+  if(q) l = l.filter(c=>[c.librador,c.cuit_librador,c.banco,c.numero,cliById(c.cliente_id)?.nombre].join(' ').toLowerCase().includes(q));
+  const due = cheques.filter(c=>c.estado==='cartera' && diasA(c.fecha_pago)<=7);
+  $('#dueAlert').innerHTML = due.length ? `<div class="alert">${due.length} cheque${due.length>1?'s':''} en cartera vence${due.length>1?'n':''} en los próximos 7 días por ${fmt(due.reduce((s,c)=>s+N(c.monto),0))}. Hay que depositarlos.</div>` : '';
+  const draw = () => {
+    $('#list').innerHTML = l.length ? l.map(c=>`<button class="item" data-id="${c.id}">
+      <img src="${urlOf(c.foto_frente)}" alt="">
+      <div><div class="t">${esc(c.librador||'Sin librador')}</div>
+        <div class="m">${esc(c.banco)} · N° ${esc(c.numero||'—')} · ${c.tipo} · de ${esc(cliById(c.cliente_id)?.nombre||'—')}</div>
+        <div class="m">${vencTxt(c)}${c.mutual_id?` · en ${esc(mutName(c.mutual_id))} al ${N(c.tasa_mutual)}%`:''}</div></div>
+      <div class="r"><div class="amt">${fmt(c.monto)}</div><span class="pill s-${c.estado}">${ESTADOS[c.estado]}</span></div>
+    </button>`).join('') : `<div class="empty">No hay cheques con este filtro.</div>`;
+  };
+  draw();
+  const missing = l.slice(0,200).map(c=>c.foto_frente).filter(p=>p && !urlOf(p));
+  if(missing.length){ await signUrls(missing); if(curTab()==='cartera') draw(); }
+}
+$('#list').addEventListener('click',e=>{ const b=e.target.closest('.item'); if(b) openCheque(b.dataset.id); });
+
+async function openCheque(id){
+  const c = cheques.find(x=>x.id===id); if(!c) return;
+  const cli = cliById(c.cliente_id) || {nombre:'—', telefono:''};
+  await signUrls([c.foto_frente, c.foto_dorso]);
+  const photo = (path,lado) => path
+    ? `<div class="shot" data-zoom="1"><img src="${urlOf(path)}" alt="${lado} del cheque"></div>`
+    : (canEdit ? `<label class="shot upl" data-up="${lado}"><strong>Agregar foto ${lado.toLowerCase()}</strong>Sacar o elegir<input type="file" accept="image/*" capture="environment"></label>`
+               : `<div class="shot" style="cursor:default">Sin foto del ${lado.toLowerCase()}</div>`);
+  $('#dlgBody').innerHTML = `
+    <h3>${fmt(c.monto)} · ${esc(c.banco)}</h3>
+    <div style="color:var(--muted);font-size:13px">N° ${esc(c.numero||'—')} · ${c.tipo} ${c.modalidad.toLowerCase()} · <span class="pill s-${c.estado}">${ESTADOS[c.estado]}${c.motivo_rechazo&&c.estado==='rechazado'?': '+esc(c.motivo_rechazo):''}</span></div>
+    <div class="photos">${photo(c.foto_frente,'Frente')}${photo(c.foto_dorso,'Dorso')}</div>
+    <div class="kv">
+      <div>Librador<b>${esc(c.librador||'—')}</b></div>
+      <div>CUIT<b>${esc(c.cuit_librador||'—')}</b></div>
+      <div>Cliente<b>${esc(cli.nombre)}</b></div>
+      <div>Fecha de pago<b>${fechaAR(c.fecha_pago)}</b></div>
+      <div>Tasa aplicada<b>${N(c.tasa_mensual)}% mensual</b></div>
+      <div>Neto entregado<b>${fmt(c.neto)}</b></div>
+      ${c.mutual_id?`<div>Descargado en<b>${esc(mutName(c.mutual_id))} al ${N(c.tasa_mutual)}%</b></div><div>Costo mutual<b style="color:var(--red)">−${fmt(c.costo_mutual)}</b></div>`:''}
+      <div>Tu margen<b style="color:var(--green)">${fmt(margenOf(c))}</b></div>
+    </div>
+    <div class="edit-only">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Cambiar estado</div>
+      <div class="states">${Object.entries(ESTADOS).map(([k,v])=>`<button class="chip" data-st="${k}" aria-pressed="${c.estado===k}">${v}</button>`).join('')}</div>
+      <div id="motivoBox"></div>
+    </div>
+    <div class="hist" id="histBox">Cargando historial…</div>
+    <div class="actions">
+      ${c.estado==='rechazado'?`<button class="btn wa" id="waRech">Avisar al cliente por WhatsApp</button>`:''}
+      <button class="btn" id="closeDlg" style="margin-left:auto">Cerrar</button>
+    </div>`;
+  const body = $('#dlgBody');
+  body.onchange = async e=>{
+    if(e.target.type!=='file' || !e.target.files[0]) return;
+    const lado = e.target.closest('[data-up]').dataset.up, col = lado==='Frente'?'foto_frente':'foto_dorso';
+    try{
+      toast('Subiendo foto…');
+      const f = await compress(e.target.files[0]);
+      const path = `cheques/${c.operacion_id}/${c.id}_${lado.toLowerCase()}.jpg`;
+      await upload(path, f.blob);
+      const {error} = await sb.from('cheques').update({[col]:path}).eq('id',c.id); if(error) throw error;
+      c[col] = path; delete urlCache[path]; toast('Foto guardada'); openCheque(c.id);
+    }catch(err){ toast('No se subió: '+errMsg(err),5000); }
+  };
+  body.onclick = e=>{
+    const z = e.target.closest('[data-zoom]');
+    if(z){ $('#lbImg').src = z.querySelector('img').src; $('#lb').showModal(); return; }
+    if(e.target.id==='closeDlg') return $('#dlg').close();
+    if(e.target.id==='waRech'){
+      const t = `Hola ${cli.nombre}, el cheque ${c.banco} N° ${c.numero||''} por ${fmt(c.monto)} (librador ${c.librador||''}) fue rechazado: ${c.motivo_rechazo||''}. Necesitamos coordinar el reemplazo o la devolución del dinero.`;
+      return window.open('https://wa.me/'+(cli.telefono||'')+'?text='+encodeURIComponent(t),'_blank');
+    }
+    const st = e.target.dataset.st; if(!st) return;
+    if(st==='rechazado'){
+      $('#motivoBox').innerHTML = `<label style="margin-top:12px">Motivo del rechazo<select id="mot"><option value="">Elegí un motivo</option>${MOTIVOS.map(m=>`<option>${m}</option>`).join('')}</select></label>`;
+      $('#mot').onchange = ev=>{ if(ev.target.value) setEstado(c,{estado:'rechazado', motivo_rechazo:ev.target.value}); };
+    } else if(st==='negociado'){
+      if(!mutuales.length) return toast('Primero cargá una mutual en Resumen');
+      $('#motivoBox').innerHTML = `<div class="grid g3" style="margin-top:12px">
+        <label>Mutual<select id="mutSel">${mutuales.filter(m=>m.activa).map(m=>`<option value="${m.id}" ${m.id===c.mutual_id?'selected':''}>${esc(m.nombre)}</option>`).join('')}</select></label>
+        <label>Tasa % mensual<input id="mutTasa" type="number" step="0.1" value="${c.tasa_mutual ?? N(mutuales[0]?.tasa_mensual)}"></label>
+        <label>&nbsp;<button class="btn primary" id="mutOk">Confirmar descarga</button></label></div>`;
+      $('#mutSel').onchange = ev=>{ $('#mutTasa').value = N(mutuales.find(m=>m.id===ev.target.value)?.tasa_mensual); };
+      $('#mutOk').onclick = ()=>{
+        const tm = N($('#mutTasa').value), d = Math.max(0,diasA(c.fecha_pago))+2;
+        setEstado(c,{estado:'negociado', mutual_id:$('#mutSel').value, tasa_mutual:tm, costo_mutual:rd(N(c.monto)*tm/100*d/30), descargado_at:new Date().toISOString()});
+      };
+    } else if(st==='cartera'){
+      setEstado(c,{estado:'cartera', motivo_rechazo:null, mutual_id:null, tasa_mutual:null, costo_mutual:0, descargado_at:null});
+    } else setEstado(c,{estado:st});
+  };
+  if(!$('#dlg').open) $('#dlg').showModal();
+  const {data:h} = await sb.from('historial_estados').select('estado_anterior,estado_nuevo,motivo,created_at').eq('cheque_id',c.id).order('created_at');
+  if($('#histBox')) $('#histBox').innerHTML = (h&&h.length) ? '<b style="color:var(--ink)">Historial</b>'+h.map(x=>`<div>${new Date(x.created_at).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'})} · ${x.estado_anterior?ESTADOS[x.estado_anterior]+' → ':''}${ESTADOS[x.estado_nuevo]}${x.motivo&&x.estado_nuevo==='rechazado'?' ('+esc(x.motivo)+')':''}</div>`).join('') : '';
+}
+async function setEstado(c, patch){
+  const {error} = await sb.from('cheques').update(patch).eq('id',c.id);
+  if(error) return toast('No se cambió: '+errMsg(error),5000);
+  Object.assign(c, patch); toast(`Marcado como ${ESTADOS[c.estado].toLowerCase()}`);
+  openCheque(c.id); renderCartera(); updateDue();
+}
+$('#lb').addEventListener('click',()=>$('#lb').close());
+$('#dlg').addEventListener('click',e=>{ if(e.target===$('#dlg')) $('#dlg').close(); });
+function updateDue(){
+  const n = cheques.filter(c=>c.estado==='cartera' && diasA(c.fecha_pago)<=7).length;
+  $('#dueCount').textContent = n||''; $('#dueCount').style.display = n?'':'none';
+}
+
+/* ================= Clientes y garantías ================= */
+function renderClientes(){
+  $('#cliList').innerHTML = clientes.length ? clientes.map(cli=>{
+    const lim = limiteCli(cli.id), uso = usoCli(cli.id), gs = garDe(cli.id);
+    const n = cheques.filter(c=>c.cliente_id===cli.id && vivo(c)).length, valor = gs.reduce((s,g)=>s+N(g.valor_tasado),0);
+    return `<div class="cli-card">
+      <div class="cli-head"><div class="t">${esc(cli.nombre)}</div>
+        <div class="cli-nums"><span>Límite <b>${fmt(lim)}</b></span><span>En uso <b>${fmt(uso)}</b> (${n} cheque${n===1?'':'s'})</span><span>Disponible <b style="color:${lim-uso<0?'var(--red)':'var(--green)'}">${fmt(lim-uso)}</b></span></div></div>
+      ${meter(uso,0,lim)}
+      ${gs.length ? gs.map(g=>{
+        const dv = diasA(g.vence_seguro);
+        const venc = !g.vence_seguro ? '' : dv<0 ? `<span class="due-late">Seguro vencido</span>` : dv<=30 ? `<span class="due-soon">Seguro vence en ${dv} días</span>` : `Seguro hasta ${fechaAR(g.vence_seguro)}`;
+        return `<div class="gar"><div><span class="d">${esc(g.descripcion)}</span><span class="m2">${esc(g.tipo)} · ${esc(g.identificacion||'—')}${venc?' · '+venc:''}</span></div>
+          <div><span class="m2">Tasación</span>${fmt(g.valor_tasado)}</div><div><span class="m2">Límite</span><b>${fmt(g.limite)}</b></div>
+          <button class="link edit-only" data-lib="${g.id}">Liberar</button></div>`;}).join('')
+        : `<div class="empty" style="margin-top:10px;padding:14px">Sin garantía cargada.</div>`}
+      <div class="actions" style="margin-top:10px"><button class="btn edit-only" data-addg="${cli.id}">Agregar garantía</button>
+        ${valor?`<span style="font-size:13px;color:var(--muted)">Tasación total ${fmt(valor)} · límite al ${Math.round(lim/valor*100)}%</span>`:''}</div>
+    </div>`;}).join('') : `<div class="empty">Todavía no cargaste clientes.</div>`;
+}
+$('#cliList').addEventListener('click', async e=>{
+  const lib = e.target.dataset.lib, addg = e.target.dataset.addg;
+  if(lib){
+    const g = garantias.find(x=>x.id===lib), cid = g.cliente_id, quedaria = limiteCli(cid) - N(g.limite);
+    if(usoCli(cid) > quedaria && !confirm(`Si liberás ${g.descripcion}, el cliente queda excedido (en uso ${fmt(usoCli(cid))}, límite ${fmt(quedaria)}). ¿Liberar igual?`)) return;
+    if(!confirm(`¿Liberar ${g.descripcion} y devolver la documentación?`)) return;
+    const {error} = await sb.from('garantias').update({estado:'liberada', liberada_at:new Date().toISOString()}).eq('id',lib);
+    if(error) return toast('No se liberó: '+errMsg(error),5000);
+    garantias = garantias.filter(x=>x.id!==lib); renderClientes(); toast('Garantía liberada');
+  }
+  if(addg) openGarantia(addg);
+});
+function openGarantia(cid){
+  const cli = cliById(cid);
+  $('#dlgBody').innerHTML = `<h3>Nueva garantía</h3><div style="color:var(--muted);font-size:13px">${esc(cli.nombre)}</div>
+    <div class="grid g2" style="margin-top:14px">
+      <label>Tipo<select id="gTipo"><option>Vehículo</option><option>Maquinaria</option><option>Inmueble</option><option>Otro</option></select></label>
+      <label>Descripción<input id="gDesc" placeholder="Ej: Ford Ranger XLT 2020"></label>
+      <label>Dominio / N° de serie<input id="gIdent" placeholder="AB 123 CD"></label>
+      <label>Vencimiento del seguro<input id="gVence" type="date"></label>
+      <label>Tasación $<input id="gValor" type="number" step="100000"></label>
+      <label>% que le prestás sobre la tasación<input id="gAforo" type="number" step="5" value="100"></label>
+      <label>Límite a otorgar $<input id="gLim" type="number" step="100000"></label>
+    </div>
+    <div class="actions"><button class="btn primary" id="gOk">Guardar garantía</button><button class="btn" id="closeDlg" style="margin-left:auto">Cancelar</button></div>`;
+  const upd = ()=>{ $('#gLim').value = Math.round(N($('#gValor').value)*N($('#gAforo').value)/100) || ''; };
+  $('#gValor').oninput = upd; $('#gAforo').oninput = upd;
+  $('#dlgBody').onchange = null;
+  $('#dlgBody').onclick = async e=>{
+    if(e.target.id==='closeDlg') return $('#dlg').close();
+    if(e.target.id!=='gOk') return;
+    const g = {cliente_id:cid, tipo:$('#gTipo').value, descripcion:$('#gDesc').value.trim(), identificacion:$('#gIdent').value.trim()||null,
+               valor_tasado:N($('#gValor').value), limite:N($('#gLim').value), vence_seguro:$('#gVence').value||null};
+    if(!g.descripcion || !g.limite) return toast('Completá descripción y límite');
+    e.target.disabled = true;
+    const {data, error} = await sb.from('garantias').insert(g).select().single();
+    e.target.disabled = false;
+    if(error) return toast('No se guardó: '+errMsg(error),5000);
+    garantias.push(data); $('#dlg').close(); renderClientes(); toast('Garantía guardada');
+  };
+  $('#dlg').showModal();
+}
+$('#ncAdd').addEventListener('click', async ()=>{
+  const nombre = $('#ncNom').value.trim(); if(!nombre) return toast('Poné el nombre del cliente');
+  $('#ncAdd').disabled = true;
+  const {data, error} = await sb.from('clientes').insert({nombre, telefono:$('#ncTel').value.replace(/\D/g,'')||null}).select().single();
+  $('#ncAdd').disabled = false;
+  if(error) return toast('No se guardó: '+errMsg(error),5000);
+  clientes.push(data); clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  $('#ncNom').value=''; $('#ncTel').value=''; fillClientes(); renderClientes(); toast('Cliente agregado');
+});
+
+/* ================= Resumen y mutuales ================= */
+function renderResumen(){
+  const sum = (l,f)=>l.reduce((s,c)=>s+f(c),0);
+  const act = cheques.filter(c=>['cartera','depositado'].includes(c.estado));
+  const rech = cheques.filter(c=>c.estado==='rechazado');
+  const cobr = cheques.filter(c=>c.estado==='acreditado'||c.estado==='negociado');
+  $('#stats').innerHTML = [
+    ['Capital en la calle', fmt(sum(act,c=>N(c.neto)))],
+    ['Pagado a mutuales', fmt(sum(cheques,c=>N(c.costo_mutual)))],
+    ['Margen realizado', fmt(sum(cobr,margenOf))],
+    ['Rechazados a recuperar', fmt(sum(rech,c=>N(c.monto)))]
+  ].map(([k,v])=>`<div class="stat"><span>${k}</span><b>${v}</b></div>`).join('');
+  $('#tblVenc').innerHTML = `<thead><tr><th>Próximos vencimientos</th><th>Banco</th><th>Fecha</th><th>Estado</th><th class="n">Monto</th></tr></thead><tbody>${
+    act.slice().sort((a,b)=>a.fecha_pago.localeCompare(b.fecha_pago)).map(c=>`<tr><td>${esc(c.librador||'—')}</td><td>${esc(c.banco)}</td><td>${fechaAR(c.fecha_pago)}</td><td><span class="pill s-${c.estado}">${ESTADOS[c.estado]}</span></td><td class="n">${fmt(c.monto)}</td></tr>`).join('') || '<tr><td colspan="5">Sin cheques activos.</td></tr>'
+  }</tbody>`;
+  const dis = canEdit ? '' : 'disabled';
+  $('#tblMut').innerHTML = `<thead><tr><th>Mutual</th><th>Tasa % mensual</th><th class="n">Cheques</th><th class="n">Nominal</th><th class="n">Costo</th><th class="n">Tu margen</th></tr></thead><tbody>${
+    mutuales.map(m=>{ const l = cheques.filter(c=>c.mutual_id===m.id);
+      return `<tr><td><input data-mid="${m.id}" data-k="nombre" value="${esc(m.nombre)}" ${dis}></td><td><input data-mid="${m.id}" data-k="tasa_mensual" type="number" step="0.1" value="${N(m.tasa_mensual)}" ${dis}></td><td class="n">${l.length}</td><td class="n">${fmt(sum(l,c=>N(c.monto)))}</td><td class="n">${fmt(sum(l,c=>N(c.costo_mutual)))}</td><td class="n">${fmt(sum(l,margenOf))}</td></tr>`;}).join('') || '<tr><td colspan="6">Todavía no cargaste mutuales.</td></tr>'
+  }</tbody>`;
+}
+$('#tblMut').addEventListener('change', async e=>{
+  const m = mutuales.find(x=>x.id===e.target.dataset.mid); if(!m) return;
+  const k = e.target.dataset.k, v = k==='tasa_mensual' ? N(e.target.value) : e.target.value.trim();
+  const {error} = await sb.from('mutuales').update({[k]:v}).eq('id',m.id);
+  if(error) return toast('No se guardó: '+errMsg(error),5000);
+  m[k] = v; renderResumen(); toast('Mutual actualizada');
+});
+$('#addMut').addEventListener('click', async ()=>{
+  const nombre = prompt('Nombre de la mutual'); if(!nombre) return;
+  const tasa = N(prompt('Tasa mensual que te cobra (%)', '3.5'));
+  const {data, error} = await sb.from('mutuales').insert({nombre:nombre.trim(), tasa_mensual:tasa}).select().single();
+  if(error) return toast(/duplicate|unique/i.test(error.message)?'Ya existe una mutual con ese nombre':'No se guardó: '+errMsg(error),5000);
+  mutuales.push(data); renderResumen(); toast('Mutual agregada');
+});
+
+/* ================= Usuarios (admin) ================= */
+async function renderUsers(){
+  $('#tblUsers').innerHTML = '<tbody><tr><td>Cargando…</td></tr></tbody>';
+  const {data, error} = await sb.from('perfiles').select('id,nombre,rol,created_at').order('created_at');
+  if(error) return toast(errMsg(error));
+  const opts = [['','Sin acceso'],['lectura','Lectura'],['operador','Operador'],['admin','Admin']];
+  $('#tblUsers').innerHTML = `<thead><tr><th>Usuario</th><th>Alta</th><th>Rol</th></tr></thead><tbody>${
+    data.map(u=>`<tr><td>${esc(u.nombre)}${u.id===me.id?' (vos)':''}</td><td>${fechaAR(u.created_at)}</td>
+      <td><select data-uid="${u.id}" ${u.id===me.id?'disabled':''}>${opts.map(([v,t])=>`<option value="${v}" ${(u.rol||'')===v?'selected':''}>${t}</option>`).join('')}</select></td></tr>`).join('')
+  }</tbody>`;
+}
+$('#tblUsers').addEventListener('change', async e=>{
+  const id = e.target.dataset.uid; if(!id) return;
+  const {error} = await sb.from('perfiles').update({rol:e.target.value||null}).eq('id',id);
+  if(error) return toast('No se cambió: '+errMsg(error),5000);
+  toast('Rol actualizado');
+});
+
+/* ================= Inicio ================= */
+draft = [newDraft()];
+(async ()=>{
+  if(!window.supabase){ document.body.innerHTML = '<p style="padding:20px">No se pudo cargar Supabase. Revisá la conexión a internet.</p>'; return; }
+  const {data:{session}} = await sb.auth.getSession();
+  if(session) afterLogin(session.user); else show('gLogin');
+  renderDraft();
+})();
+</script>
+</body>
+</html>
